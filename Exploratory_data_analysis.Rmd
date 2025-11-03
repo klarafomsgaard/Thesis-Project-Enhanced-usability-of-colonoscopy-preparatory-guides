@@ -1,5 +1,5 @@
 ---
-title: "App data dem and analysis"
+title: "Thesis: Exploratory data analysis of use of the Digital Care Guide"
 author: "Klara Krøyer Fomsgaard"
 date: "2025-09-02"
 output: html_document
@@ -30,10 +30,10 @@ pacman::p_load(tidyverse,
                arm)
 ```
 
-## DATA PREP
-This section contains data cleaning and preprocessing for analysis
+## INITIAL DATA PREP
+This section contains the initial data cleaning and preprocessing for explorative analysis
 
-### Load data
+### Load user data
 ```{r}
 data <- read_csv2("app_data.csv")
 ```
@@ -60,9 +60,8 @@ data_subset <- data_clean %>%
 
 ```
 
-## DESCRIPTIVE STATISTICS
-This section provides descriptive statistics of the app users.  
-
+## DEMOGRAPHICS
+This section provides descriptive statistics of the demogagraphic distribution of app users, as well as a plot showing the distribution
 ```{r}
 # --- Make list of users with attached demographics
 demographics <- data_subset %>% 
@@ -77,7 +76,6 @@ demographics %>%
   count()
 ```
 
-
 ```{r}
 # --- Calculate how many percent of the users are within 50-79
 demographics_grouped <- demographics %>% 
@@ -88,7 +86,6 @@ demographics_grouped <- demographics %>%
 ```
 
 ### Visualization of demographics
-This section includes visualizations of key demographics. The age is separated into intervals in order to keep the users anonymous. 
 ```{r}
 # --- Import design features
 font_add(family = "Sofia Pro",
@@ -105,12 +102,13 @@ pal_extended <- c(pal, "#999999", "#000000")
 ```
 
 ```{r}
-# --- Visualize age and sex distribution
+# --- PLOT: Visualize age and sex distribution
 ggplot(demographics, aes(x = age)) +
   geom_bar(aes(fill = sex)) +
   ggtitle("Demographical data for app users", subtitle = "Distribution across age intervals and sex") +
+  # Visual aesthetics
   theme_minimal() +
-  scale_fill_paletteer_d("fishualize::Lampris_guttatus")+
+  scale_fill_paletteer_d("fishualize::Lampris_guttatus") +
   theme(
     text = element_text(family = "Sofia Pro"),
     plot.title = element_text(family = "Sofia Pro Bold", hjust = 0.5, face = "bold"),
@@ -120,9 +118,10 @@ ggplot(demographics, aes(x = age)) +
   coord_cartesian(ylim = c(0, 45)) 
 ```
 ```{r}
-# --- Visualize distribution of male and female users
+# --- PLOT: Visualize distribution of male and female users
 ggplot(demographics, aes(x = sex)) +
   geom_bar(aes(fill = sex)) +
+  # Visual aesthetics
   geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
   ggtitle("Demographics", subtitle = "Distribution across sex") +
   theme_minimal() +
@@ -130,10 +129,13 @@ ggplot(demographics, aes(x = sex)) +
   theme(
     text = element_text(family = "Sofia Pro"),
     plot.title = element_text(hjust = 0.5, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5)
-  )+
+    plot.subtitle = element_text(hjust = 0.5))+
   labs(x = "Sex", y = "Number of users")
 ```
+
+## INVESTIGATING TASK ENGAGEMENT
+This section investigates task engagement through data visualization and descriptive statistic. The section also includes a post hoc analysis of trend in engagement across ages. 
+
 ### Overview of subtask completion distribution
 ```{r}
 # --- Make binary category for whether a task was completed or not
@@ -144,13 +146,15 @@ data_bin <- data_subset %>%
     times_seen = ifelse(subtask_completed == 0, 0,times_seen
   ))
 
+## Convert to factor
 data_bin$age <- as.factor(data_bin$age)
 
+## Summarize number of completed tasks and engagement rate for each user
 subtask_dist <- data_bin %>%
   group_by(ID, subtask_completed) %>%
-  count(name = "n") %>%                           
+  count(name = "n") %>%   # Count data                        
   ungroup() %>%                                   
-  complete(ID, subtask_completed = c(0, 1), fill = list(n = 0)) %>% 
+  complete(ID, subtask_completed = c(0, 1), fill = list(n = 0)) %>% # Calculate engagement rate
   mutate(percentage = (n / 27) * 100) %>%
   filter(subtask_completed == 1 & is.na(ID) == FALSE)
 
@@ -163,10 +167,11 @@ sd(subtask_dist$n)
 mean(subtask_dist$percentage)
 sd(subtask_dist$percentage)
 
-# --- Histogram for task engagement
+# --- HISTOGRAM for task engagement
 ggplot(subtask_dist) +
   geom_histogram(aes(x = percentage,fill = 'green'), 
            binwidth = 1)  + 
+  #  Visual aesthetics
   theme_minimal()+
   ggtitle("Distribution of subtask engagement among users", subtitle = "% of subtasks opened") +
   labs(x = "Subtask engagement in %", 
@@ -179,23 +184,24 @@ ggplot(subtask_dist) +
         plot.subtitle = element_text(hjust = 0.5))
 ```
 
-### Visualizing number of completed tasks for each age group
+### Visualizing engagement rate for each age group
 ```{r}
 # --- Append age
 completion_grouped_age <- subtask_dist %>% 
   merge(demographics, by = "ID") %>% 
   filter(age != "Age 10-19")
 
-# --- Box plot: Task engagement across age groups
+# --- BOXPLOT: Task engagement across age groups
 ggplot(completion_grouped_age, aes(x = factor(age), y = percentage, fill = factor(age))) +
   geom_jitter(width = 0.1, alpha = 0.7, size = 2, aes(color = age)) +
   geom_boxplot(alpha = 0.6, aes(color = after_scale(colorspace::darken(fill, 0.5)))) +
+  # Visual aesthetics
   labs(x = "Age", y = "% completed") +
   theme_minimal() +
   scale_fill_manual(values =pal_extended)+
   scale_color_manual(values =pal_extended)+
   ggtitle("Subtask engagement across age groups", subtitle = "Completion rate out of total number of subtasks in %") +
-   theme(legend.position = 'null',
+  theme(legend.position = 'null',
         text = element_text(family = "Sofia Pro"),
         plot.title = element_text(family = "Sofia Pro Bold", hjust = 0.5, face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 10),size = 10),
@@ -203,24 +209,25 @@ ggplot(completion_grouped_age, aes(x = factor(age), y = percentage, fill = facto
         axis.title.y = element_text(margin = margin(r = 8)))
 
 ```
-### Post Hoc Analysis: Trend in engagement across ages
+
+#### Post Hoc Analysis: Trend in engagement across ages
+Due to an indication of a negative trend across age in the visual inspection a post hoc analysis is conducted to test for significance. Bootstrapping is inlcuded to check for robustness, despite difference in sample size.
 ```{r}
 # --- Treat age groups as ordinal variable
-unique(data_bin$age)
-
 data_bin <- data_bin %>%
    mutate(age_ordinal = as.numeric(factor(age, ordered = TRUE)))
 
 
-# --- Mixed-effects logistic regression with random intercept for participants
+# --- MIXED EFFECTS LOGISTIC REGRESSION
 model <- glmer(subtask_completed ~ age_ordinal + (1|ID),
                data = data_bin, family = binomial)
 
 ## Review results
 summary(model)
 ```
+
 ```{r}
-# --- Bootstrapping: Testing for robustness of significance
+# --- BOOTSTRAPPING: Testing for robustness of significance
 set.seed(123)
 
 n_boot <- 100  # number of bootstrap iterations (use smaller number first)
@@ -247,22 +254,22 @@ quantile(boot_coefs, c(0.025, 0.975))
 ```
 
 
-### Visualizing task completion
+### Visualizing completion across different subtasks
 ```{r}
 # --- Import subtask key
 subtask_key <- read_csv2("subtask_key.csv")
 ```
 
 ```{r}
-# --- PREPPING DATA
-
+# --- DATA PREP
 # --- Summarise how many users completed each subtask
 subtasks_acc <- data_bin %>% 
   group_by(subtask) %>% 
   count(subtask_completed)
 
-subtasks_acc$subtask_completed <- fct_rev(as.factor(subtasks_acc$subtask_completed))
+subtasks_acc$subtask_completed <- fct_rev(as.factor(subtasks_acc$subtask_completed)) 
 
+# --- Calculate percentage
 subtasks_acc_compl <- subtasks_acc %>% 
   group_by(subtask) %>% 
   mutate(total_completed = sum(n)) %>% 
@@ -291,14 +298,16 @@ max(subtasks_acc_compl$percentage_completed)
 ```
 
 ```{r}
-# --- PLOT: Engagement with subtasks
+# --- DATA PREP
 df <- subtasks_acc_compl %>% 
   mutate( sub_unique = paste0(task_description, "___", row_number()), 
           sub_unique = factor(sub_unique, levels = rev(sub_unique))) 
 
+#--- PLOT: Engagement with subtasks
 ggplot(df, aes(x = percentage_completed, 
                y = sub_unique, 
                fill = percentage_completed)) + 
+  # Visual aesthestics
   geom_col(color = "darkgrey", size = 0.1, width = 0.8, alpha = 0.9) +
   xlim(0,100)+
   scale_x_continuous(
@@ -327,7 +336,7 @@ ggplot(df, aes(x = percentage_completed,
 ```
 
 ### Visualizing whether users complete the task on time
-In order to do so, we only include users who have engaged with the task
+The data is explored looking only and users engaging with the tasks
 ```{r}
 
 # --- DATA PREP
@@ -353,11 +362,11 @@ ggplot(on_time_acc, aes(x = n,
   geom_col(size = 0.2, 
            width = 0.8, 
            position = position_dodge()) +
+  # Visual aesthetics
   xlim(0,100)+
   scale_x_continuous(
     limits = c(-1.5, NA),          
-    expand = expansion(mult = 0)
-  )+
+    expand = expansion(mult = 0)) +
   scale_y_discrete(labels = ~ gsub("Task \\d+ - ", "", .x)) +
   scale_fill_manual(values = c("#F75107FF","#85D3C3FF")) +
   labs(x = "% of users", y = NULL, fill = "on time") + 
@@ -378,6 +387,7 @@ ggplot(on_time_acc, aes(x = n,
 ```
 
 ### Visualization of whether tasks have been marked as complete
+This section investigate behavior associated with the 'Mark as completed' feature, which users can use to track progress
 ```{r}
 # --- Import task key
 task_key <- read_csv2("task_key.csv")
@@ -391,7 +401,7 @@ task_opened_subset <- data_task_acc %>%
 data_marked <- data_bin %>%
   mutate(marked_as_completed = ifelse(is.na(marked_as_completed),"No", marked_as_completed),
          marked_as_completed = ifelse(marked_as_completed == "yes", "Yes", marked_as_completed),
-         marked_as_completed = ifelse(Task_viewed == "No", "Not opened",marked_as_completed)) %>%
+         marked_as_completed = ifelse(Task_viewed == "No", "Not opened", marked_as_completed)) %>%
   filter(Task_viewed == "Yes") %>% 
   group_by(ID, task) %>%      # group by participant ID and task
   slice_head(n = 1) %>%       # keep only the first row in each group
@@ -403,11 +413,12 @@ data_marked <- data_bin %>%
 data_marked_yes <- data_marked %>% 
   filter(marked_as_completed == "Yes")
 
-# ------ PLOT: 
+# --- PLOT: Combining the total number of active users for each task and the amount of users opening the task
 ggplot(data_marked_yes, 
        aes(x = n, 
            y = fct_reorder(task_description, as.numeric(task),.desc = TRUE),
            fill = marked_as_completed)) + 
+  # Total number of active users
   geom_col(data = task_opened_subset, 
            aes(x = n, 
                y = fct_reorder(task_description, as.numeric(task), .desc = TRUE)),
@@ -419,8 +430,10 @@ ggplot(data_marked_yes,
                                .desc = TRUE),
                color = "Total interactions"),
              shape = 108, size = 5) +
+  # Number of users marking the task as completed
   geom_col(size = 0.2, 
            width = 0.7) +
+  # Visual aesthetics
   theme_minimal() +
   ggtitle("Feature engagement: Marking tasks as completed") +
   labs(x = "Number of users", 
@@ -450,5 +463,4 @@ ggplot(data_marked_yes,
         legend.box.just = "center")
 
 ```
-
 
